@@ -1,0 +1,1 @@
+{"name":"sbt","version":"1.9.7","bspVersion":"2.1.0-M1","languages":["scala"],"argv":["/Users/kad43/.sdkman/candidates/java/17.0.10-zulu/zulu-17.jdk/Contents/Home/bin/java","-Xms100m","-Xmx100m","-classpath","/Users/kad43/.sdkman/candidates/sbt/1.9.8/bin/sbt-launch.jar","-Dsbt.script=/Users/kad43/.sdkman/candidates/sbt/current/bin/sbt","xsbt.boot.Boot","-bsp"]}
