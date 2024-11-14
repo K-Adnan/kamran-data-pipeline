@@ -20,7 +20,13 @@ lazy val root = (project in file("."))
   .aggregate(dataEmitter) // Include the data-emitter module
   .settings(
     libraryDependencies ++=
-      akkaDependencies
+      akkaDependencies ++
+        Seq(
+          "io.circe" %% "circe-core" % "0.14.1",
+          "io.circe" %% "circe-generic" % "0.14.1",
+          "io.circe" %% "circe-parser" % "0.14.1",
+          "de.heikoseeberger" %% "akka-http-circe" % "1.38.2"
+        )
   )
 
 lazy val dataEmitter = Project("data-emitter", file("data-emitter"))
@@ -28,5 +34,10 @@ lazy val dataEmitter = Project("data-emitter", file("data-emitter"))
     name := "data-emitter",
     scalaVersion := "2.13.8",
     libraryDependencies ++=
-      akkaDependencies
+      akkaDependencies ++ Seq(
+        "io.circe" %% "circe-core" % "0.14.1",
+        "io.circe" %% "circe-generic" % "0.14.1",
+        "io.circe" %% "circe-parser" % "0.14.1",
+        "de.heikoseeberger" %% "akka-http-circe" % "1.38.2"
+      )
   )

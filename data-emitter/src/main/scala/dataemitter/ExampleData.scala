@@ -1,21 +1,25 @@
 package dataemitter
 
 import akka.stream.scaladsl.Source
+import dataemitter.ExampleData.fileToSeq
 
 import java.time.Duration
 import scala.util.Random
 
 object ExampleData {
 
-  private val firstNames = fileToSeq("firstnames")
-  private val lastNames = fileToSeq("lastnames")
-
-  val firstNamesSource: Source[String, _] = Source.repeat(()).map { _ =>
-    firstNames(Random.nextInt(firstNames.size))
+  def firstNamesSource: Source[String, _] = {
+    val firstNames = fileToSeq("firstnames")
+    Source.repeat(()).map { _ =>
+      fileToSeq("firstnames")(Random.nextInt(firstNames.size))
+    }
   }
 
-  val lastNamesSource: Source[String, _] = Source.repeat(()).map { _ =>
-    lastNames(Random.nextInt(lastNames.size))
+  def lastNamesSource: Source[String, _] = {
+    val lastNames = fileToSeq("lastnames")
+    Source.repeat(()).map { _ =>
+      lastNames(Random.nextInt(lastNames.size))
+    }
   }
 
   private val currentTimeMillis = System.currentTimeMillis()
@@ -34,7 +38,14 @@ object ExampleData {
   }
 
   val transactionAmountSource: Source[Double, _] = Source.repeat(()).map { _ =>
-    BigDecimal(Random.between(1.99, 200)).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
+    roundAmount(Random.between(1.99, 200))
+  }
+
+  def currencySource: Source[String, _] = {
+    val currencies = fileToSeq("currencies")
+    Source.repeat(()).map { _ =>
+      currencies(Random.nextInt(currencies.size))
+    }
   }
 
   private def fileToSeq(path: String): Seq[String] = {
@@ -44,12 +55,17 @@ object ExampleData {
     seq
   }
 
+  def roundAmount(amount: Double): Double = BigDecimal(amount).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
+
   case class Transaction(
       transactionTime: Long,
       firstName: String,
       lastName: String,
       phoneNumber: String,
       transactionId: Long,
-      transactionAmount: Double
+      transactionAmount: Double,
+      currency: String
   )
+
+  case class ExchangeRates(date: String, usd: Map[String, Double])
 }
