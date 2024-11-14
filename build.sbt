@@ -38,6 +38,8 @@ lazy val dataEmitter = Project("data-emitter", file("data-emitter"))
         "io.circe" %% "circe-core" % "0.14.1",
         "io.circe" %% "circe-generic" % "0.14.1",
         "io.circe" %% "circe-parser" % "0.14.1",
-        "de.heikoseeberger" %% "akka-http-circe" % "1.38.2"
+        "de.heikoseeberger" %% "akka-http-circe" % "1.38.2",
+        "com.google.cloud" % "google-cloud-pubsub" % "1.131.0",
+        "io.spray" %% "spray-json" % "1.3.6"
       )
   )

@@ -1,19 +1,28 @@
 package dataemitter
 
-import akka.actor.ActorSystem
-import akka.actor.Status.{Failure, Success}
+import akka.NotUsed
+import akka.actor.{ActorSystem, Status}
 import io.circe.generic.auto._
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
+import spray.json._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.unmarshalling._
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
+import com.google.api.core.{ApiFutureCallback, ApiFutures}
+import com.google.auth.oauth2.GoogleCredentials
+import com.google.cloud.pubsub.v1.Publisher
+import com.google.protobuf.ByteString
+import com.google.pubsub.v1.{PubsubMessage, TopicName}
 import dataemitter.ExampleData._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import spray.json.DefaultJsonProtocol.jsonFormat7
 
-import scala.concurrent.{Await, ExecutionContext, Future}
+import java.io.FileInputStream
+import java.util.concurrent.Executors
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.concurrent.duration._
+import scala.util.{Failure, Success, Try}
 
 object DataEmitter extends App {
 
@@ -57,6 +66,40 @@ object DataEmitter extends App {
       }
     }
 
+  object TransactionJsonProtocol extends DefaultJsonProtocol {
+    implicit val transactionFormat: RootJsonFormat[Transaction] = jsonFormat7(Transaction)
+  }
+
+  private val pubsubFlow: Flow[Transaction, Try[String], NotUsed] = Flow[Transaction].mapAsync(1) { t =>
+    import TransactionJsonProtocol._
+    val pubsubMessage = PubsubMessage.newBuilder().setData(ByteString.copyFromUtf8(t.toJson.compactPrint)).build()
+    val publisher = Publisher
+      .newBuilder(TopicName.of("kamran-test-project", "user-purchase-transaction"))
+      .setCredentialsProvider(() =>
+        GoogleCredentials.fromStream(new FileInputStream("/Users/kad43/kamran-test-project-key.json"))
+      )
+      .build()
+
+    toScalaFuture(publisher.publish(pubsubMessage)).map { messageId =>
+      Success(s"Message published with ID: $messageId")
+    }.recover { case ex =>
+      Failure(new Exception(s"Failed to publish message:", ex))
+    }
+  }
+
+  def toScalaFuture[T](apiFuture: com.google.api.core.ApiFuture[T]): Future[T] = {
+    val promise = Promise[T]()
+    ApiFutures.addCallback(
+      apiFuture,
+      new ApiFutureCallback[T] {
+        override def onFailure(t: Throwable): Unit = promise.failure(t)
+        override def onSuccess(result: T): Unit = promise.success(result)
+      },
+      Executors.newSingleThreadExecutor()
+    )
+    promise.future
+  }
+
   private def convertToUSD(amount: Double, cur: String)(implicit ec: ExecutionContext): Future[(Double, String)] = {
     val httpResponse = Http().singleRequest(
       HttpRequest(uri = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json")
@@ -75,8 +118,9 @@ object DataEmitter extends App {
   }
 
   combinedSource
-    .throttle(5, 1.second)
+    .throttle(3, 1.second)
     .via(transactionFlow)
     .via(currencyFlow)
+    .via(pubsubFlow)
     .runWith(Sink.foreach(println))
 }
